@@ -2,4 +2,4 @@
 
 *Running*
 
-First run preprocessing.py, then models.py
+First run preprocessing.py, then rnn.py or linear_regression.ipynb
