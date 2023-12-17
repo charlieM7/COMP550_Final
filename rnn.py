@@ -1,117 +1,198 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchtext.legacy import data
+from torchtext.vocab import GloVe
+from tqdm import tqdm
 import pandas as pd
-import tensorflow
-import numpy as np
-import sklearn
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
-import nltk
-from keras.preprocessing import sequence, text
-from keras.utils import to_categorical
-from keras.models import Model
-from keras.layers import Input, Embedding, LSTM, Dense, concatenate
-from keras.optimizers import Adam
 
-def rnn_preprocess(X_train, X_test, Y_train, Y_test):
-    X_train = [str(x) for x in X_train]
-    X_test = [str(x) for x in X_test]
+# hyperparameters
+size_vocab = None
+embed_dim = 300
+hidden_dim = 128
+output_dim = 1
+learning_rate = 0.001
+epochs = 5
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    posts = pd.Series(X_train + X_test)
-    length_of_the_messages = posts.str.split("\\s+")
-    max_words = length_of_the_messages.str.len().max() + 1
 
-    tokenizer = text.Tokenizer(num_words=max_words)
-    tokenizer.fit_on_texts(X_train)
-    tokenizer.fit_on_texts(X_test)
+# define rnn model
+class RNNModel(nn.Module):
+    def __init__(self, size_vocab, embed_dim, hidden_dim, output_dim):
+        super(RNNModel, self).__init__()
+        self.embedding = nn.Embedding(size_vocab, embed_dim)
+        self.rnn = nn.LSTM(embed_dim, hidden_dim, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, output_dim)
 
-    X_train_seq = tokenizer.texts_to_sequences(X_train)
-    X_test_seq = tokenizer.texts_to_sequences(X_test)
+    def forward(self, x):
+        embedded = self.embedding(x)
+        output, _ = self.rnn(embedded)
+        last_hidden = output[:, -1, :]
+        return self.fc(last_hidden)
 
-    max_seq_train = max(len(seq) for seq in X_train_seq)
-    max_seq_test = max(len(seq) for seq in X_test_seq)
 
-    X_train_pad = sequence.pad_sequences(X_train_seq, maxlen=max_seq_train)
-    X_test_pad = sequence.pad_sequences(X_test_seq, maxlen=max_seq_test)
+# train rnn model
+def train_model(train_data, TEXT):
+    # initialize model, loss function, and optimizer
+    model = RNNModel(size_vocab, embed_dim, hidden_dim, output_dim).to(device)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    train_iterator = data.Iterator(train_data, batch_size=32, device=device)
 
-    Y_train_cat = to_categorical(Y_train)
-    Y_test_cat = to_categorical(Y_test)
+    # train model for each epoch
+    for epoch in range(epochs):
+        total_loss = 0.0
+        pbar = tqdm(train_iterator, desc=f'Epoch {epoch + 1}/{epochs}', leave=False)
 
-    return max_words, X_train_pad, X_test_pad, Y_train_cat, Y_test_cat, max_seq_train, max_seq_test
+        # pbar to visualize loss for each epoch
+        for batch in pbar:
+            text, labels = batch.text.to(device), batch.Sentiment.float().to(device)
+            text = torch.where(text < size_vocab, text, torch.tensor(TEXT.vocab.stoi[TEXT.unk_token], device=device, dtype=torch.long))
+            optimizer.zero_grad()
+            predictions = model(text).squeeze(1)
+            loss = criterion(predictions, labels)
+            loss.backward()
+            optimizer.step()
 
-def num_feature_normalization(train, test):
-    feature_min = pd.concat([train, test], axis=0).min()
-    feature_max = pd.concat([train, test], axis=0).max()
-    feature_train_norm = (train - feature_min) / (feature_max - feature_min)
-    feature_test_norm = (test - feature_min) / (feature_max - feature_min)
+            total_loss += loss.item() * len(labels)
+            pbar.set_postfix({'Loss': total_loss / len(train_data)}) 
+        
+        avg_loss = total_loss / len(train_data)
+        print(f'Epoch {epoch + 1}/{epochs}, Avg Loss: {avg_loss:.4f}')
 
-    return feature_train_norm, feature_test_norm
+    # save the trained model
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, 'models/model_checkpoint8.pth')
+
+
+# evaluate the tained model on test data
+def evaluate(model, test_data, TEXT):
+    test_iterator = data.Iterator(test_data, batch_size=32, device=device, train=False, sort=False)
+    model.eval()
+    total_correct = 0
+    total_samples = 0
+
+    with torch.no_grad():
+        for batch in test_iterator:
+            text, labels = batch.text.to(device), batch.Sentiment.to(device)
+            text = torch.where(text < size_vocab, text, torch.tensor(TEXT.vocab.stoi[TEXT.unk_token], device=device, dtype=torch.long))
+            predictions = model(text).squeeze(1)
+
+            # clamp predictions between -1 and 1 
+            predictions = torch.clamp(predictions, min=-1, max=1)
+
+            # discretize the continuous results
+            sentiment = torch.where(predictions > 0.05, 1, torch.where((predictions >= -0.05) & (predictions <= 0.05), 0, -1))
+            correct_mask = torch.eq(sentiment, labels)
+            total_correct += correct_mask.sum().item()
+            total_samples += len(labels)
+
+    # print accuracy
+    accuracy = total_correct / total_samples
+    print(f'Test Accuracy: {accuracy * 100:.2f}%')
+
+
+# apply model to unlabeled dataset
+def label_dataset(model, dataset, csv, TEXT):
+    predicted_sentiments = []
+
+    with torch.no_grad():
+        for example in dataset.examples:
+            text = example.text
+            predicted_sentiment = predict(model, text, TEXT)
+            predicted_sentiments.append(predicted_sentiment)
+
+    # Add the predicted sentiments to the dataset
+    dataset.fields['Sentiment'] = data.Field(sequential=False, use_vocab=False, dtype=torch.float)
+    for example, sentiment in zip(dataset.examples, predicted_sentiments):
+        example.Sentiment = sentiment
+
+    # create new dataframe
+    original_dataframe = pd.DataFrame({
+        'text': [' '.join(example.text) for example in dataset.examples],
+        'Num_Comments': [row['Num_Comments'] for index, row in csv.iterrows()],
+        'Score': [row['Score'] for index, row in csv.iterrows()],
+        'Gilded_Status': [row['Gilded_Status'] for index, row in csv.iterrows()],
+    })
+
+    # add new "Sentiment" row to dataframe
+    original_dataframe['Sentiment'] = [example.Sentiment for example in dataset.examples]
+
+    # save the new dataframe
+    original_dataframe.to_csv('data/analysis_data.csv', index=False)
+
+
+# predict label for given text
+def predict(model, text, TEXT):
+    numericalized_text = [TEXT.vocab.stoi[token] for token in text]
+    input_tensor = torch.tensor(numericalized_text, dtype=torch.long).unsqueeze(0).to(device)
+
+    # Make the prediction
+    with torch.no_grad():
+        model.eval()
+        prediction = model(input_tensor).squeeze(1)
+        prediction = torch.clamp(prediction, min=-1, max=1)
+
+    return prediction.item()
+
+
+def main():
+    TEXT = data.Field(tokenize='spacy', tokenizer_language='en_core_web_sm', batch_first=True)
+    LABEL = data.LabelField(dtype=torch.float, use_vocab=False)
+
+    data_fields = [('text', TEXT), ('Num_Comments', None), ('Score', None), ('Gilded_Status', None), ('Sentiment', LABEL)]
+
+    # load training data
+    train_data = data.TabularDataset(
+        path='data/auto_labeled_dataset.csv',
+        format='csv',
+        fields=data_fields,
+        skip_header=True
+    )
+
+    # load test data
+    test_data = data.TabularDataset(
+        path='data/hand_labeled_dataset.csv',
+        format='csv',
+        fields=data_fields,
+        skip_header=True
+    )
+
+    # load unlabled dataset for analysis
+    unlabeled_data = data.TabularDataset(
+        path='data/unlabeled_dataset.csv',
+        format='csv',
+        fields=data_fields,
+        skip_header=True
+    )
+
+    # load unlabeled dataset for new csv creation
+    csv = pd.read_csv('data/unlabeled_dataset.csv')
+
+    # build vocabulary
+    TEXT.build_vocab(train_data, vectors=GloVe(name='6B', dim=300), unk_init=torch.Tensor.mean)
+    LABEL.build_vocab(train_data)
+
+    # set global variable
+    global size_vocab 
+    size_vocab = len(TEXT.vocab)
+    
+    # train model
+    train_model(train_data, TEXT)
+
+    # load model for evaluation and data labeling
+    model = RNNModel(size_vocab, embed_dim, hidden_dim, output_dim).to(device)
+    checkpoint = torch.load('models/rnn_final_checkpoint.pth')
+    model.load_state_dict(checkpoint['model_state_dict'])
+
+    # evaluate trained model
+    evaluate(model, test_data, TEXT)
+
+    # label unlabeled dataset with trained model
+    label_dataset(model, unlabeled_data, csv, TEXT)
+
 
 if __name__ == "__main__":
-    cleaned_auto = pd.read_csv('data/cleaned_auto_labeled.csv')
-    cleaned_hand = pd.read_csv('data/cleaned_hand_labeled.csv')
-    cleaned_unlabeled = pd.read_csv('data/cleaned_unlabeled.csv')
-
-    # text feature
-    X_train, Y_train = cleaned_auto['Text'], cleaned_auto['Sentiment']
-    X_test, Y_test = cleaned_hand['Text'], cleaned_hand['Sentiment']
-    # num_comments feature
-    C_train, C_test = cleaned_auto['Num_Comments'], cleaned_hand['Num_Comments']
-    # score feature
-    S_train, S_test = cleaned_auto['Score'], cleaned_hand['Score']
-
-    # RNN
-    max_words, X_train_pad, X_test_pad, Y_train_cat, Y_test_cat, max_seq_train, max_seq_test = \
-        rnn_preprocess(X_train, X_test, Y_train, Y_test)
-    C_train_norm, C_test_norm = num_feature_normalization(C_train, C_test)
-    S_train_norm, S_test_norm = num_feature_normalization(S_train, S_test)
-
-    X_train_rnn, X_val_rnn, C_train_rnn, C_val_rnn, S_train_rnn, S_val_rnn, Y_train_rnn, Y_val_rnn = \
-        train_test_split(X_train_pad, C_train_norm, S_train_norm, Y_train_cat, test_size=0.2, random_state=42)
-
-    embedding_dim = 3
-    lstm_units = 128
-
-    # 1 feature rnn
-    text_input = Input(shape=(max_seq_train,))
-    embedding_layer = Embedding(max_words, embedding_dim)(text_input)
-    lstm_layer = LSTM(lstm_units)(embedding_layer)
-    text_output = Dense(1, activation='linear')(lstm_layer)
-
-    rnn_model = Model(inputs=text_input, outputs=text_output)
-
-    rnn_model.compile(optimizer=Adam(), loss='mean_squared_error', metrics=['mae'])
-    rnn_model.fit(X_train_rnn, Y_train_rnn, epochs=10, batch_size=32, validation_data=(X_val_rnn, Y_val_rnn), verbose=1)
-
-    rnn_model_results = rnn_model.evaluate(X_test_pad, Y_test_cat)
-    print("Text-Only Model:")
-    print("Mean Squared Error:", rnn_model_results[0])
-    print("Mean Absolute Error:", rnn_model_results[1])
-    print("\n")
-
-    # 3 features rnn
-    comments_input = Input(shape=(1,))
-    comments_dense = Dense(32, activation='relu')(comments_input)
-    score_input = Input(shape=(1,))
-    score_dense = Dense(32, activation='relu')(comments_input)
-
-    merged = concatenate([lstm_layer, comments_dense, score_dense])
-    merged_dense = Dense(32, activation='relu')(merged)
-    merged_output = Dense(1, activation='linear')(merged_dense)
-    rnn_model_ft = Model(inputs=[text_input, comments_input, score_input], outputs=merged_output)
-
-    rnn_model_ft.compile(optimizer=Adam(), loss='mean_squared_error', metrics=['mae'])
-    rnn_model_ft.fit([X_train, C_train_rnn, S_train_rnn], Y_train_rnn, epochs=10, batch_size=32,
-                     validation_data=([X_val_rnn, C_val_rnn, S_val_rnn], Y_val_rnn), verbose=1)
-
-    rnn_model_ft_results = rnn_model_ft.evaluate([X_test_pad, C_test_norm, S_test_norm], Y_test_cat)
-    print("Text-Only Model:")
-    print("Mean Squared Error:", rnn_model_ft_results[0])
-    print("Mean Absolute Error:", rnn_model_ft_results[1])
-    print("\n")
-
-    # vectorizer = TfidfVectorizer()
-    # X_train_vect = vectorizer.fit_transform(X_train)
-    # vec_X_test = vectorizer.transform(X_test)
-    # vec_X_train_ft_vect = vectorizer.fit_transform(X_train_ft)
-    # vec_X_test_ft = vectorizer.transform(X_test_ft)
-
-
+    main()

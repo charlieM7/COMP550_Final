@@ -45,16 +45,20 @@ def preprocessing(datasets, stopwords_list, lemmatizer):
         dataset.to_csv(fpath, index=False)
 
 if __name__ == "__main__":
-    auto_labeled = pd.read_csv('data/auto_labeled_dataset.txt')
-    auto_labeled.name = 'auto_labeled'
-    hand_labeled = pd.read_csv('data/hand_labeled_dataset.txt')
-    hand_labeled.name = 'hand_labeled'
-    unlabeled = pd.read_csv('data/unlabeled_dataset.txt')
-    unlabeled.name = 'unlabeled'
+    # auto_labeled = pd.read_csv('data/auto_labeled_dataset.csv')
+    # auto_labeled.name = 'auto_labeled'
+    # hand_labeled = pd.read_csv('data/hand_labeled_dataset.csv')
+    # hand_labeled.name = 'hand_labeled'
+    # unlabeled = pd.read_csv('data/unlabeled_dataset.csv')
+    # unlabeled.name = 'unlabeled'
+
+    test = pd.read_csv('data/test2.csv')
+    test.name = 'test2'
 
     stopwords_list = stop_words()
     lemmatizer = WordNetLemmatizer()
-    data = [auto_labeled, hand_labeled, unlabeled]
+    # data = [auto_labeled, hand_labeled, unlabeled]
+    data = [test]
 
     preprocessing(data, stopwords_list, lemmatizer)
 
