@@ -1,3 +1,6 @@
+# Code adapted from the following tutorial: https://github.com/bentrevett/pytorch-sentiment-analysis/blob/master/1%20-%20Simple%20Sentiment%20Analysis.ipynb
+# Original author: Ben Trevett 
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
