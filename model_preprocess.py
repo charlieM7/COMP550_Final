@@ -6,7 +6,6 @@ from nltk.stem import WordNetLemmatizer
 import re
 
 
-
 def stop_words():
     not_stopwords = ['not', "don't", 'aren', 'don', 'ain', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn',
                     "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't",
@@ -45,20 +44,16 @@ def preprocessing(datasets, stopwords_list, lemmatizer):
         dataset.to_csv(fpath, index=False)
 
 if __name__ == "__main__":
-    # auto_labeled = pd.read_csv('data/auto_labeled_dataset.csv')
-    # auto_labeled.name = 'auto_labeled'
-    # hand_labeled = pd.read_csv('data/hand_labeled_dataset.csv')
-    # hand_labeled.name = 'hand_labeled'
-    # unlabeled = pd.read_csv('data/unlabeled_dataset.csv')
-    # unlabeled.name = 'unlabeled'
-
-    test = pd.read_csv('data/test2.csv')
-    test.name = 'test2'
+    auto_labeled = pd.read_csv('data/auto_labeled_dataset.csv')
+    auto_labeled.name = 'auto_labeled'
+    hand_labeled = pd.read_csv('data/hand_labeled_dataset.csv')
+    hand_labeled.name = 'hand_labeled'
+    unlabeled = pd.read_csv('data/unlabeled_dataset.csv')
+    unlabeled.name = 'unlabeled'
 
     stopwords_list = stop_words()
     lemmatizer = WordNetLemmatizer()
-    # data = [auto_labeled, hand_labeled, unlabeled]
-    data = [test]
+    data = [auto_labeled, hand_labeled, unlabeled]
 
     preprocessing(data, stopwords_list, lemmatizer)
 
