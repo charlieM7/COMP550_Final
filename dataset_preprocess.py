@@ -4,6 +4,7 @@ import re
 from langdetect import detect
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from sklearn.model_selection import train_test_split
+import textstat
 
 
 # create dataset made up of different subreddits
@@ -35,6 +36,10 @@ def create_dataset(subreddits, corpora):
 
             # check if text has at least 10 characters
             if len(cleaned_text) < 10:
+                continue
+
+             # check if text is over a set flesch reading threshold
+            if textstat.flesch_reading_ease(cleaned_text) < 50:
                 continue
             
             # check if utterance is first post
