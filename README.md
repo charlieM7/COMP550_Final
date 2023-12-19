@@ -11,6 +11,10 @@
 > python rnn.py
 ```
 
+## Link to Data Set
+
+- [Data Set](https://drive.google.com/drive/folders/1JbgAZuk9erVrwcVOpjSpUrrTmchvhowN?usp=drive_link)
+
 ## Code Acknowledgments
 
 Portions of the rnn.py code were adapted from the following tutorial:
