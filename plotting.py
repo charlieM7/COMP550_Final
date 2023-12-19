@@ -1,6 +1,15 @@
 import random
 
 import matplotlib.pyplot as plt
+import numpy as np
+from numpy import genfromtxt
+from scipy.stats import spearmanr, pearsonr
+import pandas as pd
+
+
+df = pd.read_csv('data/analysis_data1.csv', sep=',', header=0)
+# print(df.values)
+
 
 # polarity = [0.5, 1, 0, 0.5, -1, -0.25]
 # engagement = [1, -5, 1, 2, 4, 5]
@@ -14,6 +23,7 @@ neutral_eng = []
 
 negative_pol = []
 negative_eng = []
+
 
 
 def gen_rand_list(number, val):
@@ -77,12 +87,14 @@ def get_mean(polarity, engagement):
 
 def scatter_plot(polarity, engagement):
     # plt.plot([1, 2, 3, 4], [1, 4, 9, 16], 'color')
-    plt.plot(polarity, engagement, 'ro')
+    plt.scatter(polarity, engagement)
     plt.title("Polarity vs Engagement")
     plt.xlabel("polarity")
     plt.ylabel("engagement")
+
+    plt.draw()
+    plt.savefig("scatter_plot.jpg")
     plt.show()
-    # plt.savefig("scatter_plot.jpg")
 
 def scatter_plot_abs(polarity, engagement):
     # convert neg value to positive
@@ -96,12 +108,27 @@ def scatter_plot_abs(polarity, engagement):
     plt.scatter(neg_x, negative_eng, color="blue", label="negative")
     plt.scatter(neu_x, neutral_eng, color="black", label="neutral")
 
-    plt.xlabel('X-axis')
-    plt.ylabel('Y-axis')
+    plt.xlabel('polarity (absolute value)')
+    plt.ylabel('engagement')
     plt.title('Scatter Plot 1')
 
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+          fancybox=True, shadow=True, ncol=5)
+    plt.draw()
+    plt.savefig("scatter_plot_abs.jpg")
     plt.show()
 
+
+
+def get_co_var(polarity, engagement):
+    covar_matrix = np.cov(polarity, engagement)
+    print("Polarity variance: " + covar_matrix[0][0].astype('|S6').decode('UTF-8'))
+    print("Engagement variance: " + covar_matrix[1][1].astype('|S6').decode('UTF-8'))
+    print("Polarity-Engagement covariance: " + covar_matrix[0][1].astype('|S6').decode('UTF-8'))
+    corr = pearsonr(polarity, engagement)
+    print("Pearson Correlation: ")
+    print(corr)
+    return covar_matrix
 
 
 def bar_plot_means(polarity, engagement):
@@ -110,30 +137,58 @@ def bar_plot_means(polarity, engagement):
     names = means.keys()
     # respective average of 3 categories
     values = means.values()
-    colors = ['red', 'green', 'blue']
+    colors = ['red', 'black', 'blue']
 
     plt.figure(figsize=(9, 3))
 
     # plt.subplot(131)
     plt.bar(names, values, color=colors)
     plt.title('Mean of positive, neutral, and negative tagged text')
+
+    plt.draw()
+    plt.savefig("means.png")
     plt.show()
-    # plt.savefig("means.png")
+
 
 
 if __name__ == "__main__":
-    polarity = gen_rand_list(50, 2)
-    engagement = gen_rand_list(50, 10)
+    # polarity = gen_rand_list(50, 2)
+    # engagement = gen_rand_list(50, 10)
+    # print( list(df.columns.values))
 
+    polarity = df['Sentiment'].to_numpy()
+    engagement = df['Score'].to_numpy()
+    comments = df['Num_Comments'].to_numpy()
+    # print(polarity)
+    # print(engagement)
     # polarity = [0.5, 1, 0, 0.5, -1, -0.25]
     # engagement = [1, -5, 1.5, 2, 4, 5]
-    sort_pos_neu_neg(polarity, engagement)
+    sort_pos_neu_neg(polarity, comments)
 
     print(len(positive_pol))
     print(len(positive_eng))
     print()
     print(len(negative_pol))
     print(len(negative_eng))
-    scatter_plot(polarity, engagement)
-    bar_plot_means(polarity, engagement)
-    scatter_plot_abs(polarity, engagement)
+    print()
+    print("Overall")
+    print(get_co_var(polarity,engagement))
+    print()
+    print("Negative")
+    print(get_co_var(negative_pol, negative_eng))
+    print()
+    print("Positive")
+    print(get_co_var(positive_pol, positive_eng))
+    print()
+    print("Neutral")
+    print(get_co_var(neutral_pol, neutral_eng))
+    print()
+    # scatter_plot(polarity, engagement)
+    # bar_plot_means(polarity, engagement)
+    # scatter_plot_abs(polarity, engagement)
+    # print(spearmanr(polarity, engagement))
+
+    print(get_co_var(get_abs(polarity),comments))
+    print(spearmanr(get_abs(polarity),comments))
+    #scatter_plot_abs(polarity, comments)
+    bar_plot_means(polarity, comments)
