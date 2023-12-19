@@ -158,11 +158,12 @@ if __name__ == "__main__":
 
     polarity = df['Sentiment'].to_numpy()
     engagement = df['Score'].to_numpy()
+    comments = df['Num_Comments'].to_numpy()
     # print(polarity)
     # print(engagement)
     # polarity = [0.5, 1, 0, 0.5, -1, -0.25]
     # engagement = [1, -5, 1.5, 2, 4, 5]
-    sort_pos_neu_neg(polarity, engagement)
+    sort_pos_neu_neg(polarity, comments)
 
     print(len(positive_pol))
     print(len(positive_eng))
@@ -182,10 +183,12 @@ if __name__ == "__main__":
     print("Neutral")
     print(get_co_var(neutral_pol, neutral_eng))
     print()
-    scatter_plot(polarity, engagement)
-    bar_plot_means(polarity, engagement)
-    scatter_plot_abs(polarity, engagement)
-    print(spearmanr(polarity, engagement))
+    # scatter_plot(polarity, engagement)
+    # bar_plot_means(polarity, engagement)
+    # scatter_plot_abs(polarity, engagement)
+    # print(spearmanr(polarity, engagement))
 
-    print(get_co_var(get_abs(polarity),engagement))
-    print(spearmanr(get_abs(polarity),engagement))
+    print(get_co_var(get_abs(polarity),comments))
+    print(spearmanr(get_abs(polarity),comments))
+    #scatter_plot_abs(polarity, comments)
+    bar_plot_means(polarity, comments)
