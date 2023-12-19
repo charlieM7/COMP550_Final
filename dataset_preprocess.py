@@ -71,8 +71,8 @@ def get_sentiment_scores(text):
 
 # run vader sentiment analysis on data
 def vader(data):
-    train_data, sub_data = train_test_split(data, test_size=0.2, random_state=42)
-    unlabel_data, test_data = train_test_split(sub_data, test_size=0.001, random_state=42)
+    train_data, sub_data = train_test_split(data, test_size=0.2, random_state=10)
+    unlabel_data, test_data = train_test_split(sub_data, test_size=0.001, random_state=10)
 
     train_data['Sentiment'] = train_data['Text'].apply(get_sentiment_scores)
     import pdb; pdb.set_trace()
