@@ -13,6 +13,7 @@
 
 ## Link to Data Set
 
+Link to Google Drive to download the data and saved trained models
 - [Data Set](https://drive.google.com/drive/folders/1JbgAZuk9erVrwcVOpjSpUrrTmchvhowN?usp=drive_link)
 
 ## Code Acknowledgments
