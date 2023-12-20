@@ -35,11 +35,11 @@ def gen_rand_list(number, val):
 
 def sort_pos_neu_neg(polarity, engagement):
     for i in range(len(polarity)):
-        if polarity[i] >= 0.5:
+        if polarity[i] >= 0.05:
             positive_pol.append(polarity[i])
             positive_eng.append(engagement[i])
             # positive[polarity[i]] = engagement[i]
-        elif polarity[i] <= -0.5:
+        elif polarity[i] <= -0.05:
             negative_pol.append(polarity[i])
             negative_eng.append(engagement[i])
             # negative[polarity[i]] = engagement[i]
@@ -66,11 +66,11 @@ def get_mean(polarity, engagement):
 
     for i in range(len(polarity)):
 
-        if polarity[i] >= 0.5:
+        if polarity[i] >= 0.05:
             # is positive
             pos_sum += engagement[i]
             pos_count += 1
-        elif polarity[i] <= -0.5:
+        elif polarity[i] <= -0.05:
             # is negative
             neg_sum += engagement[i]
             neg_count += 1
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # print(engagement)
     # polarity = [0.5, 1, 0, 0.5, -1, -0.25]
     # engagement = [1, -5, 1.5, 2, 4, 5]
-    sort_pos_neu_neg(polarity, comments)
+    sort_pos_neu_neg(polarity, engagement)
 
     print(len(positive_pol))
     print(len(positive_eng))
@@ -183,12 +183,12 @@ if __name__ == "__main__":
     print("Neutral")
     print(get_co_var(neutral_pol, neutral_eng))
     print()
-    # scatter_plot(polarity, engagement)
-    # bar_plot_means(polarity, engagement)
-    # scatter_plot_abs(polarity, engagement)
-    # print(spearmanr(polarity, engagement))
+    scatter_plot(polarity, engagement)
+    bar_plot_means(polarity, engagement)
+    scatter_plot_abs(polarity, engagement)
+    print(spearmanr(polarity, engagement))
 
-    print(get_co_var(get_abs(polarity),comments))
-    print(spearmanr(get_abs(polarity),comments))
+    print(get_co_var(get_abs(polarity),engagement))
+    print(spearmanr(get_abs(polarity),engagement))
     #scatter_plot_abs(polarity, comments)
-    bar_plot_means(polarity, comments)
+    # bar_plot_means(polarity, comments)
