@@ -11,6 +11,11 @@
 > python rnn.py
 ```
 
+## Link to Data Set
+
+Link to Google Drive to download the data and saved trained models
+- [Data Set](https://drive.google.com/drive/folders/1JbgAZuk9erVrwcVOpjSpUrrTmchvhowN?usp=drive_link)
+
 ## Code Acknowledgments
 
 Portions of the rnn.py code were adapted from the following tutorial:

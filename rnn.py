@@ -1,5 +1,6 @@
-# Code adapted from the following tutorial: https://github.com/bentrevett/pytorch-sentiment-analysis/blob/master/1%20-%20Simple%20Sentiment%20Analysis.ipynb
-# Original author: Ben Trevett 
+# Code adapted from the following tutorials:
+# https://github.com/bentrevett/pytorch-sentiment-analysis/blob/master/1%20-%20Simple%20Sentiment%20Analysis.ipynb
+# https://github.com/bentrevett/pytorch-sentiment-analysis/blob/master/2%20-%20Upgraded%20Sentiment%20Analysis.ipynb 
 
 import torch
 import torch.nn as nn
@@ -40,7 +41,7 @@ def train_model(train_data, TEXT):
     model = RNNModel(size_vocab, embed_dim, hidden_dim, output_dim).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    train_iterator = data.Iterator(train_data, batch_size=32, device=device)
+    train_iterator = data.Iterator(train_data, batch_size=30, device=device)
 
     # train model for each epoch
     for epoch in range(epochs):
@@ -67,12 +68,12 @@ def train_model(train_data, TEXT):
     torch.save({
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
-    }, 'models/model_checkpoint8.pth')
+    }, 'models/non_proprocessed_checkpoint.pth')
 
 
 # evaluate the tained model on test data
 def evaluate(model, test_data, TEXT):
-    test_iterator = data.Iterator(test_data, batch_size=32, device=device, train=False, sort=False)
+    test_iterator = data.Iterator(test_data, batch_size=30, device=device, train=False, sort=False)
     model.eval()
     total_correct = 0
     total_samples = 0
@@ -187,7 +188,7 @@ def main():
 
     # load model for evaluation and data labeling
     model = RNNModel(size_vocab, embed_dim, hidden_dim, output_dim).to(device)
-    checkpoint = torch.load('models/rnn_final_checkpoint.pth')
+    checkpoint = torch.load('models/non_preprocessed_checkpoint.pth')
     model.load_state_dict(checkpoint['model_state_dict'])
 
     # evaluate trained model

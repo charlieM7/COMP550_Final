@@ -4,6 +4,7 @@ import re
 from langdetect import detect
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from sklearn.model_selection import train_test_split
+import textstat
 
 
 # create dataset made up of different subreddits
@@ -35,6 +36,10 @@ def create_dataset(subreddits, corpora):
 
             # check if text has at least 10 characters
             if len(cleaned_text) < 10:
+                continue
+
+             # check if text is over a set flesch reading threshold
+            if textstat.flesch_reading_ease(cleaned_text) < 50:
                 continue
             
             # check if utterance is first post
@@ -71,8 +76,8 @@ def get_sentiment_scores(text):
 
 # run vader sentiment analysis on data
 def vader(data):
-    train_data, sub_data = train_test_split(data, test_size=0.2, random_state=42)
-    unlabel_data, test_data = train_test_split(sub_data, test_size=0.001, random_state=42)
+    train_data, sub_data = train_test_split(data, test_size=0.2, random_state=10)
+    unlabel_data, test_data = train_test_split(sub_data, test_size=0.001, random_state=10)
 
     train_data['Sentiment'] = train_data['Text'].apply(get_sentiment_scores)
     import pdb; pdb.set_trace()
